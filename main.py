@@ -63,7 +63,7 @@ if not os.path.exists('results'):
     os.makedirs('results')
 
 # Load and preprocess the MUTAG dataset
-dataset_list = ['MUTAG', 'ENZYMES', 'PROTEINS', 'IMDB-BINARY']
+dataset_list = ['MUTAG', 'ENZYMES', 'PROTEINS']
 for dataset_name in dataset_list:
     dataset = TUDataset(root=dataset_name+'_Dataset', name=dataset_name)
     num_classes = dataset.num_classes
@@ -81,12 +81,13 @@ for dataset_name in dataset_list:
 
     # Initialize variables for tracking max accuracy
     max_test_accuracy = 0.0
+    best_model_state = None
 
     # Create a list to store logs
     logs = []
 
     # Training loop
-    epochs = 1000
+    epochs = 500
     for epoch in range(epochs):
         # Train the model
         model.train()
@@ -115,7 +116,9 @@ for dataset_name in dataset_list:
         # Update max test accuracy
         if test_accuracy > max_test_accuracy:
             max_test_accuracy = test_accuracy
-
+            best_model_state = model.state_dict()
+            torch.save(best_model_state, os.path.join('results', 'best_model_'+dataset_name+'.pth'))
+            print(f'Best model saved with Test Accuracy: {test_accuracy:.4f}')
         # Append logs
         logs.append({
         'Epoch': epoch + 1,
