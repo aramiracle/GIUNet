@@ -1,83 +1,90 @@
 import torch
 import torch.nn as nn
-import torch_geometric
+import torch_geometric.nn as gnn
 from torch_geometric.nn import GINConv
 
     
+
 class PoolingLayer(nn.Module):
-    def forward(self, x, batch):
-        # Calculate mean pooling across batch dimension
-        batch_size = batch.max() + 1
-        sum_pool = torch.zeros(batch_size, x.size(1), device=x.device)
-        count_pool = torch.zeros(batch_size, 1, device=x.device)
-
-        for i in range(batch_size):
-            mask = (batch == i)
-            sum_pool[i] = torch.sum(x[mask], dim=0)
-            count_pool[i] = torch.sum(mask)
-
-        pooled_x = sum_pool / count_pool
+    def forward(self, x, edge_index):
+        pooled_x = x.mean(dim=0)
         return pooled_x
 
+
 class UnpoolingLayer(nn.Module):
-    def forward(self, x_pooled, batch, num_nodes):
-        # Upsample by broadcasting
-        unpooled_x = x_pooled[batch]  # Broadcast pooled features to nodes
-        return unpooled_x
+    def forward(self, x_pooled, num_nodes):
+        return x_pooled.unsqueeze(0).repeat(num_nodes, 1)
+
 
 class GIUNet(nn.Module):
     def __init__(self, num_features, num_classes):
         super(GIUNet, self).__init__()
 
-        self.downconv1 = GINConv(nn.Sequential(
+        self.conv1 = gnn.GINConv(nn.Sequential(
             nn.Linear(num_features, 64),
             nn.ReLU(),
             nn.Linear(64, 64)
         ))
+        self.conv2 = gnn.GINConv(nn.Sequential(
+            nn.Linear(64, 128),
+            nn.ReLU(),
+            nn.Linear(128, 128)
+        ))
+        self.conv3 = gnn.GINConv(nn.Sequential(
+            nn.Linear(128, 256),
+            nn.ReLU(),
+            nn.Linear(256, 256)
+        ))
 
-        self.downconv2 = GINConv(nn.Sequential(
-            nn.Linear(64, 64),
+        self.pool = PoolingLayer()
+        self.unpool = UnpoolingLayer()
+
+        self.middle_conv = gnn.GINConv(nn.Sequential(
+            nn.Linear(256, 256),
+            nn.ReLU(),
+            nn.Linear(256, 256)
+        ))
+
+        self.upconv1 = gnn.GINConv(nn.Sequential(
+            nn.Linear(256 + 256, 128),
+            nn.ReLU(),
+            nn.Linear(128, 128)
+        ))
+        self.upconv2 = gnn.GINConv(nn.Sequential(
+            nn.Linear(128 + 128, 64),
             nn.ReLU(),
             nn.Linear(64, 64)
         ))
-
-        self.pool1 = PoolingLayer()  # Separate pooling layer 1
-
-        self.upconv1 = GINConv(nn.Sequential(
-            nn.Linear(64 + num_features, 64),
+        self.upconv3 = gnn.GINConv(nn.Sequential(
+            nn.Linear(64 + num_features, num_classes),
             nn.ReLU(),
-            nn.Linear(64, 64)
+            nn.Linear(num_classes, num_classes)
         ))
-
-        self.upconv2 = GINConv(nn.Sequential(
-            nn.Linear(64 + 64, 64),
-            nn.ReLU(),
-            nn.Linear(64, num_classes)
-        ))
-
-        self.unpool1 = UnpoolingLayer()  # Separate unpooling layer 1
 
     def forward(self, data):
-        x, edge_index, batch = data.x, data.edge_index, data.batch
+        x, edge_index = data.x, data.edge_index
 
-        # Downward path
-        x1 = self.downconv1(x, edge_index)
-        x2 = self.downconv2(x1, edge_index)
+        # Encoder path
+        x1 = self.conv1(x, edge_index)
+        x_pooled1 = self.pool(x1, edge_index)
+        x2 = self.conv2(x_pooled1, edge_index)
+        x_pooled2 = self.pool(x2, edge_index)
+        x3 = self.conv3(x_pooled2, edge_index)
+        x_pooled3 = self.pool(x3, edge_index)
 
-        # First pooling layer
-        x_pooled1 = self.pool1(x2, batch)
+        # Middle convolution
+        x_middle = self.middle_conv(x_pooled3, edge_index)
 
-        # Upward path
-        x_up1 = torch.cat([x, x2], dim=1)
-        x_up1 = self.upconv1(x_up1, edge_index)
+        # Decoder path
+        x_up1 = self.unpool(x_middle, num_nodes=x3.size(0))
+        x_up1 = self.upconv1(torch.cat([x_up1, x2], dim=1), edge_index)
+        x_up2 = self.unpool(x_up1, num_nodes=x2.size(0))
+        x_up2 = self.upconv2(torch.cat([x_up2, x1], dim=1), edge_index)
+        x_up3 = self.unpool(x_up2, num_nodes=x1.size(0))
+        x_up3 = self.upconv3(torch.cat([x_up3, x], dim=1), edge_index)
 
-        x_up2 = torch.cat([x_up1, x2], dim=1)
-        x_up2 = self.upconv2(x_up2, edge_index)
+        return x_up3
 
-        # First unpooling layer
-        x_unpooled1 = self.unpool1(x_pooled1, batch, x.size(0))
-
-        return x_unpooled1
     
 class GINModel(nn.Module):
     def __init__(self, num_features, num_classes):

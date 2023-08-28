@@ -23,11 +23,11 @@ for dataset_name in dataset_list:
     # Split dataset into train and test
     train_dataset, test_dataset = train_test_split(dataset, test_size=0.25, random_state=42)
 
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
 
     # Initialize the model, optimizer, and criterion
-    model = GINModel(num_features, num_classes)
+    model = GIUNet(num_features, num_classes)
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     criterion = nn.CrossEntropyLoss()
 
