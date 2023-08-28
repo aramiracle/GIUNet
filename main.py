@@ -6,7 +6,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from torch_geometric.datasets import TUDataset
 from torch_geometric.data import DataLoader
-from models import GINModel
+from models import GINModel, GIUNet
 from utils import test
 
 # Create results directory
@@ -31,7 +31,6 @@ for dataset_name in dataset_list:
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     criterion = nn.CrossEntropyLoss()
 
-    #Training loop
     # Initialize variables for tracking max accuracy
     max_test_accuracy = 0.0
     best_model_state = None
@@ -51,6 +50,7 @@ for dataset_name in dataset_list:
         for data in train_loader:
             optimizer.zero_grad()
             output = model(data)
+
             loss = criterion(output, data.y)
             loss.backward()
             optimizer.step()
