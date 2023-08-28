@@ -3,78 +3,11 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import pandas as pd
-import torch_geometric
 from sklearn.model_selection import train_test_split
 from torch_geometric.datasets import TUDataset
 from torch_geometric.data import DataLoader
-from torch_geometric.nn import GINConv
-
-# Define the GIN model
-class GINModel(nn.Module):
-    def __init__(self, num_features, num_classes):
-        super(GINModel, self).__init__()
-
-        self.downconv1 = GINConv(nn.Sequential(
-            nn.Linear(num_features, 64),
-            nn.ReLU(),
-            nn.Linear(64, 64)
-        ))
-
-        self.downconv2 = GINConv(nn.Sequential(
-            nn.Linear(64, 64),
-            nn.ReLU(),
-            nn.Linear(64, 64)
-        ))
-
-        self.upconv1 = GINConv(nn.Sequential(
-            nn.Linear(64 + num_features, 64),
-            nn.ReLU(),
-            nn.Linear(64, 64)
-        ))
-
-        self.upconv2 = GINConv(nn.Sequential(
-            nn.Linear(64 + 64, 64),
-            nn.ReLU(),
-            nn.Linear(64, num_classes)
-        ))
-
-    def forward(self, data):
-        x, edge_index, batch = data.x, data.edge_index, data.batch
-
-        # Downward path
-        x1 = self.downconv1(x, edge_index)
-        x2 = self.downconv2(x1, edge_index)
-
-        # Upward path
-        x_up1 = torch.cat([x, x2], dim=1)
-        x_up1 = self.upconv1(x_up1, edge_index)
-
-        x_up2 = torch.cat([x_up1, x2], dim=1)
-        x_up2 = self.upconv2(x_up2, edge_index)
-
-        x_up2 = torch_geometric.nn.global_mean_pool(x_up2, batch)
-
-        return x_up2
-    
-def test(model, loader, criterion):
-    model.eval()
-    total_loss = 0
-    total_correct = 0
-    total_samples = 0
-
-    with torch.no_grad():
-        for data in loader:
-            output = model(data)
-            loss = criterion(output, data.y)
-
-            total_loss += loss.item()
-            total_correct += (output.argmax(dim=1) == data.y).sum().item()
-            total_samples += data.y.size(0)
-
-    avg_loss = total_loss / len(loader)
-    avg_acc = total_correct / total_samples
-
-    return avg_loss, avg_acc
+from models import GINModel
+from utils import test
 
 # Create results directory
 if not os.path.exists('results'):
@@ -92,11 +25,13 @@ for dataset_name in dataset_list:
 
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+
     # Initialize the model, optimizer, and criterion
     model = GINModel(num_features, num_classes)
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     criterion = nn.CrossEntropyLoss()
 
+    #Training loop
     # Initialize variables for tracking max accuracy
     max_test_accuracy = 0.0
     best_model_state = None
