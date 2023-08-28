@@ -14,29 +14,47 @@ class GINModel(nn.Module):
     def __init__(self, num_features, num_classes):
         super(GINModel, self).__init__()
 
-        self.conv1 = GINConv(nn.Sequential(
+        self.downconv1 = GINConv(nn.Sequential(
             nn.Linear(num_features, 64),
             nn.ReLU(),
             nn.Linear(64, 64)
         ))
 
-        self.conv2 = GINConv(nn.Sequential(
+        self.downconv2 = GINConv(nn.Sequential(
             nn.Linear(64, 64),
             nn.ReLU(),
             nn.Linear(64, 64)
         ))
 
-        self.fc = nn.Linear(64, num_classes)
+        self.upconv1 = GINConv(nn.Sequential(
+            nn.Linear(64 + num_features, 64),
+            nn.ReLU(),
+            nn.Linear(64, 64)
+        ))
+
+        self.upconv2 = GINConv(nn.Sequential(
+            nn.Linear(64 + 64, 64),
+            nn.ReLU(),
+            nn.Linear(64, num_classes)
+        ))
 
     def forward(self, data):
         x, edge_index, batch = data.x, data.edge_index, data.batch
 
-        x = self.conv1(x, edge_index)
-        x = self.conv2(x, edge_index)
-        x = torch_geometric.nn.global_mean_pool(x, batch)
-        x = self.fc(x)
+        # Downward path
+        x1 = self.downconv1(x, edge_index)
+        x2 = self.downconv2(x1, edge_index)
 
-        return x
+        # Upward path
+        x_up1 = torch.cat([x, x2], dim=1)
+        x_up1 = self.upconv1(x_up1, edge_index)
+
+        x_up2 = torch.cat([x_up1, x2], dim=1)
+        x_up2 = self.upconv2(x_up2, edge_index)
+
+        x_up2 = torch_geometric.nn.global_mean_pool(x_up2, batch)
+
+        return x_up2
     
 def test(model, loader, criterion):
     model.eval()
