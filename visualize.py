@@ -40,5 +40,5 @@ for model in models_list:
         plt.legend()
 
     plt.tight_layout()
-    visulization_file_path = os.path.join(model_results_dir, 'visualization_for_'+dataset)
-    plt.savefig(visulization_file_path)
+visulization_file_path = os.path.join('results', 'visualization')
+plt.savefig(visulization_file_path)
