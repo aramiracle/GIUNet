@@ -4,3 +4,5 @@ PROTEINS_Dataset/
 __pycache__/
 .idea/
 test.py
+.gitignore
+data/

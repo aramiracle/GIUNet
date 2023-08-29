@@ -6,7 +6,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from torch_geometric.datasets import TUDataset
 from torch_geometric.data import DataLoader
-from models import GINModel, GraphUNet
+from models import *
 from utils import test
 from tqdm import tqdm
 
@@ -15,7 +15,7 @@ if not os.path.exists('results'):
     os.makedirs('results')
 
 # List of model names
-model_list = ['GINModel', 'GraphUNet']
+model_list = ['GraphUNet', 'SimpleGraphUNet', 'GINModel']
 
 # Load and preprocess the MUTAG dataset
 dataset_list = ['MUTAG', 'ENZYMES', 'PROTEINS']
@@ -33,9 +33,6 @@ for model_name in model_list:
         num_classes = dataset.num_classes
         num_features = dataset.num_features
 
-        # Create the model instance dynamically based on the model name string
-        model = globals()[model_name](num_features, num_classes)
-
         # Split dataset into train and test
         train_dataset, test_dataset = train_test_split(dataset, test_size=0.25, random_state=42)
 
@@ -43,7 +40,8 @@ for model_name in model_list:
         test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
 
         # Initialize the model, optimizer, and criterion
-        model = GraphUNet(num_features, num_classes)
+        # Create the model instance dynamically based on the model name string
+        model = globals()[model_name](num_features, num_classes)
         optimizer = optim.Adam(model.parameters(), lr=0.001)
         criterion = nn.CrossEntropyLoss()
 

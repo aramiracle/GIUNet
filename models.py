@@ -1,16 +1,84 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch_geometric.nn 
-from torch_geometric.nn import GINConv, GCNConv, global_mean_pool
+from torch_geometric.nn import GINConv,TopKPooling, global_max_pool, global_mean_pool
 
 
-import torch
-import torch.nn as nn
-
-class GraphUNet(nn.Module):
+class GraphUNet(torch.nn.Module):
     def __init__(self, num_features, num_classes):
         super(GraphUNet, self).__init__()
+
+        self.conv1 = GINConv(nn.Sequential(
+            nn.Linear(num_features, 32),
+            nn.BatchNorm1d(32),
+            nn.ReLU(),
+            nn.Linear(32, 32),
+            nn.BatchNorm1d(32),
+            nn.ReLU()
+        ))
+        self.pool1 = TopKPooling(32, ratio=0.8)
+        self.conv2 = GINConv(nn.Sequential(
+            nn.Linear(32, 64),
+            nn.BatchNorm1d(64),
+            nn.ReLU(),
+            nn.Linear(64, 64),
+            nn.BatchNorm1d(64),
+            nn.ReLU()
+        ))
+        self.pool2 = TopKPooling(64, ratio=0.8)
+        self.conv3 = GINConv(nn.Sequential(
+            nn.Linear(64, 128),
+            nn.BatchNorm1d(128),
+            nn.ReLU(),
+            nn.Linear(128, 128),
+            nn.BatchNorm1d(128),
+            nn.ReLU()
+        ))
+        self.pool3 = TopKPooling(128, ratio=0.8)
+
+        # Decoder
+        self.decoder3 = nn.Sequential(
+            nn.Linear(256, 128),
+            nn.BatchNorm1d(128),
+            nn.ReLU(),
+            nn.Linear(128, 128),
+            nn.BatchNorm1d(128),
+            nn.ReLU()
+        )
+        self.decoder2 = nn.Sequential(
+            nn.Linear(128, 64),
+            nn.BatchNorm1d(64),
+            nn.ReLU(),
+            nn.Linear(64, 64),
+            nn.BatchNorm1d(64),
+            nn.ReLU()
+        )
+        self.decoder1 = nn.Linear(64, num_classes)
+
+    def forward(self, data):
+        x, edge_index, batch = data.x, data.edge_index, data.batch
+
+        x = F.relu(self.conv1(x, edge_index))
+        x, edge_index, _, batch, _, _ = self.pool1(x, edge_index, None, batch)
+        x1 = torch.cat([global_max_pool(x, batch), global_mean_pool(x, batch)], dim=1)
+
+        x = F.relu(self.conv2(x, edge_index))
+        x, edge_index, _, batch, _, _ = self.pool2(x, edge_index, None, batch)
+        x2 = torch.cat([global_max_pool(x, batch), global_mean_pool(x, batch)], dim=1)
+
+        x = F.relu(self.conv3(x, edge_index))
+        x, edge_index, _, batch, _, _ = self.pool3(x, edge_index, None, batch)
+        x3 = torch.cat([global_max_pool(x, batch), global_mean_pool(x, batch)], dim=1)
+
+        x_d3 = F.relu(self.decoder3(x3))
+        x_d2 = F.relu(self.decoder2(x_d3 + x2))
+        x_d1 = F.log_softmax(self.decoder1(x_d2 + x1), dim=-1)
+
+        return x_d1
+    
+class SimpleGraphUNet(nn.Module):
+    def __init__(self, num_features, num_classes):
+        super(SimpleGraphUNet, self).__init__()
 
         # Encoder
         self.conv1 = GINConv(nn.Sequential(
@@ -118,6 +186,6 @@ class GINModel(nn.Module):
         x_up2 = self.upconv2(x_up2, edge_index)
 
         # Pooling layer
-        x_pooled = torch_geometric.nn.global_mean_pool(x_up2, batch)
+        x_pooled = global_mean_pool(x_up2, batch)
 
         return x_pooled
