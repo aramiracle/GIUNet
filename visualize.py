@@ -5,9 +5,9 @@ import os
 dataset_list = ['MUTAG', 'ENZYMES', 'PROTEINS']
 num_datasets = len(dataset_list)
 directory = './results'
-models_list = os.listdir(directory)
+models_list = set(os.listdir(directory)) - set(['visualization.png'])
 # Create a new figure
-plt.figure(figsize=(8, 3 * num_datasets))
+plt.figure(figsize=(16, 6 * num_datasets))
 
 for model in models_list:
     for i, dataset in enumerate(dataset_list):
