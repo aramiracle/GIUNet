@@ -9,13 +9,14 @@ from torch_geometric.data import DataLoader
 from models import *
 from utils import test
 from tqdm import tqdm
+from torchsummary import summary
 
 # Create results directory
 if not os.path.exists('results'):
     os.makedirs('results')
 
 # List of model names
-model_list = ['GraphUNet2']
+model_list = ['GINModel','SimpleGraphUNet' ,'GraphUNet']
 
 # Load and preprocess the MUTAG dataset
 dataset_list = ['MUTAG', 'ENZYMES', 'PROTEINS']

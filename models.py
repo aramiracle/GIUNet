@@ -16,7 +16,7 @@ class Pool(nn.Module):
         self.final_proj = nn.Linear(2, 1)
         self.drop = nn.Dropout(p=p) if p > 0 else nn.Identity()
 
-    def forward(self, edge_index, h, batch):
+    def forward(self, edge_index, h):
         Z = self.drop(h)
         G = edge_index_to_nx_graph(edge_index, h.shape[0])
         C = all_centralities(G)
@@ -136,10 +136,10 @@ class GraphUNet2(torch.nn.Module):
 
         # Encoder
         x1 = F.relu(self.conv1(x, edge_index))
-        g1, x1_pooled, idx1, edge_index1 = self.pool1(edge_index, x1, batch)
+        g1, x1_pooled, idx1, edge_index1 = self.pool1(edge_index, x1)
 
         x2 = F.relu(self.conv2(x1_pooled, edge_index1))
-        _, x2_pooled, idx2, edge_index2 = self.pool2(edge_index1, x2, batch)
+        _, x2_pooled, idx2, edge_index2 = self.pool2(edge_index1, x2)
 
         # Middle Convolution
         x_m = F.relu(self.midconv(x2_pooled, edge_index2))
