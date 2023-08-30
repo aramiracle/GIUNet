@@ -5,64 +5,85 @@ from torch_geometric.nn import GINConv,TopKPooling, global_max_pool, global_mean
 import networkx as nx
 
 
-import numpy as np
-import networkx as nx
-import torch
-import torch.nn as nn
-
+# Define a custom pooling layer
 class Pool(nn.Module):
-    def __init__(self, k, in_dim, p):
+    def __init__(self, in_dim, ratio, p):
         super(Pool, self).__init__()
-        self.k = k
-        self.centralities_num = 6
+        self.ratio = ratio
         self.sigmoid = nn.Sigmoid()
         self.feature_proj = nn.Linear(in_dim, 1)
-        self.structure_proj = nn.Linear(self.centralities_num, 1)
+        self.structure_proj = nn.Linear(6, 1)
         self.final_proj = nn.Linear(2, 1)
         self.drop = nn.Dropout(p=p) if p > 0 else nn.Identity()
 
-    def forward(self, g, h):
+    def forward(self, edge_index, h, batch):
         Z = self.drop(h)
-        G = nx.from_numpy_array(g.detach().numpy())
-        C = all_centralities(G).float()
+        G = edge_index_to_nx_graph(edge_index, h.shape[0])
+        C = all_centralities(G)
         feature_weights = self.feature_proj(Z)
         structure_weights = self.structure_proj(C)
-        weights = self.final_proj(torch.cat([feature_weights, structure_weights], dim=1)).squeeze()
+        weights = self.final_proj(torch.cat([feature_weights, structure_weights], dim=1)).squeeze()  # Combine and project weights
         scores = self.sigmoid(weights)
-        return top_k_graph(scores, g, h, self.k)
+        g, h, idx = top_k_pool(scores, edge_index, h, self.ratio)
+        edge_index = edge_index[:, idx]
+        return g, h, idx, edge_index
+    
+# Convert edge_index to NetworkX graph
+def edge_index_to_nx_graph(edge_index, num_nodes):
+    edge_list = edge_index.t().tolist()
+    G = nx.Graph()
+    G.add_nodes_from(range(num_nodes))
+    G.add_edges_from(edge_list)
+    return G
 
-class Unpool(nn.Module):
-    def forward(self, g, h, pre_h, idx):
-        new_h = torch.zeros_like(h)
-        new_h[idx] = h[idx]
-        idx_prime = torch.tensor([i for i in idx if i >= g.shape[0]])
-        for i in idx_prime:
-            new_h[i] = (h * g[i, :]).sum(0) / g[i, :].sum()
-        return g, new_h
-
-def centrality_based(centrality_metric, graph):
-    if centrality_metric in ['closeness', 'degree', 'eigenvector', 'betweenness', 'load', 'subgraph', 'harmonic']:
-        return torch.tensor(list(nx.algorithms.centrality.__getattribute__(centrality_metric)(graph).values()))
-    else:
-        raise ValueError("Unknown centrality metric")
-
+# Calculate various centralities for a graph
 def all_centralities(graph):
-    return torch.stack([centrality_based(metric, graph) for metric in ['closeness', 'degree', 'betweenness', 'load', 'subgraph', 'harmonic']], dim=1)
+    closeness = torch.tensor(list(nx.algorithms.centrality.closeness_centrality(graph).values()))
+    degree = torch.tensor(list(nx.algorithms.centrality.degree_centrality(graph).values()))
+    betweenness = torch.tensor(list(nx.algorithms.centrality.betweenness_centrality(graph).values()))
+    load = torch.tensor(list(nx.algorithms.centrality.load_centrality(graph).values()))
+    subgraph = torch.tensor(list(nx.algorithms.centrality.subgraph_centrality(graph).values()))
+    harmonic = torch.tensor(list(nx.algorithms.centrality.harmonic_centrality(graph).values()))
+    return torch.stack([closeness, degree, betweenness, load, subgraph, harmonic], dim=1)
 
-def top_k_graph(scores, g, h, k):
-    num_nodes = g.shape[0]
-    values, idx = torch.topk(scores, max(2, int(k * num_nodes)))
-    new_h = h[idx, :]
+# Select top-k graph based on scores
+def top_k_pool(scores, edge_index, h, k):
+    num_nodes = h.shape[0]
+    values, idx = torch.topk(scores, max(2, int(k * num_nodes)))  # Get top-k values and indices
+    new_h = h[idx, :]  # Select top-k nodes
     values = torch.unsqueeze(values, -1)
-    new_h = torch.mul(new_h, values)
-    un_g = torch.matmul(g.bool().float(), torch.matmul(g.bool().float(), g.bool().float())).bool().float()
-    un_g = un_g[idx, :][:, idx]
-    g = norm_g(un_g)
+    new_h = torch.mul(new_h, values)  # Apply weights to nodes
+    g = adjacency_matrix(edge_index, num_nodes=num_nodes)  # Create adjacency matrix
+    un_g = torch.matmul(g.bool().float(), torch.matmul(g.bool().float(), g.bool().float())).bool().float()  # Calculate unnormalized graph
+    un_g = un_g[idx, :][:, idx]  # Select top-k subgraph
+    g = norm_g(un_g)  # Normalize the graph
     return g, new_h, idx
 
+
+# Create adjacency matrix from edge_index
+def adjacency_matrix(edge_index, num_nodes=None):
+    if num_nodes is None:
+        num_nodes = edge_index.max().item() + 1
+    adj_matrix = torch.zeros((num_nodes, num_nodes))
+    adj_matrix[edge_index[0], edge_index[1]] = 1
+    return adj_matrix
+
+# Normalize the graph
 def norm_g(g):
     return g / (g.sum(1, keepdim=True) + 1e-8)
 
+class Unpool(nn.Module):
+    def forward(self, g, h, idx):
+        new_h = h.new_zeros([g.shape[0], h.shape[1]])
+        new_h[idx] = h
+        idx_prime = torch.tensor([index for index in idx if index not in range(g.shape[0])])
+        
+        for i in idx_prime:
+            normalized_idx = idx.float() / g[i].sum()  # Normalize indices
+            weighted_mean = torch.sum(g[i][i] * normalized_idx)  # Compute weighted mean
+            new_h[i] = weighted_mean * h
+       
+        return new_h
 
 class GraphUNet2(torch.nn.Module):
     def __init__(self, num_features, num_classes):
@@ -76,7 +97,8 @@ class GraphUNet2(torch.nn.Module):
             nn.BatchNorm1d(32),
             nn.ReLU()
         ))
-        self.pool1 = Pool(32, ratio=0.8)
+        self.pool1 = Pool(32, ratio=0.8, p=0.5)  # Custom pooling layer
+
         self.conv2 = GINConv(nn.Sequential(
             nn.Linear(32, 64),
             nn.BatchNorm1d(64),
@@ -85,56 +107,54 @@ class GraphUNet2(torch.nn.Module):
             nn.BatchNorm1d(64),
             nn.ReLU()
         ))
-        self.pool2 = Pool(64, ratio=0.8)
-        self.conv3 = GINConv(nn.Sequential(
-            nn.Linear(64, 128),
-            nn.BatchNorm1d(128),
-            nn.ReLU(),
-            nn.Linear(128, 128),
-            nn.BatchNorm1d(128),
-            nn.ReLU()
-        ))
-        self.pool3 = Pool(128, ratio=0.8)
+        self.pool2 = Pool(64, ratio=0.8, p=0.5)  # Custom pooling layer
 
-        # Decoder
-        self.decoder3 = nn.Sequential(
-            nn.Linear(256, 128),
-            nn.BatchNorm1d(128),
-            nn.ReLU(),
-            nn.Linear(128, 128),
-            nn.BatchNorm1d(128),
-            nn.ReLU()
-        )
-        self.decoder2 = nn.Sequential(
-            nn.Linear(128, 64),
+        self.midconv = GINConv(nn.Sequential(
+            nn.Linear(64, 64),
             nn.BatchNorm1d(64),
             nn.ReLU(),
             nn.Linear(64, 64),
             nn.BatchNorm1d(64),
             nn.ReLU()
-        )
-        self.decoder1 = nn.Linear(64, num_classes)
+        ))
+
+        self.decoder2 = GINConv(nn.Sequential(
+            nn.Linear(64, 32),
+            nn.BatchNorm1d(32),
+            nn.ReLU(),
+            nn.Linear(32, 32),
+            nn.BatchNorm1d(32),
+            nn.ReLU()
+        ))
+        self.decoder1 = nn.Linear(32, num_classes)  # Final classification layer
+
+        self.unpool2 = Unpool()  # Unpool layer after decoder2
+        self.unpool1 = Unpool()  # Unpool layer after decoder1
 
     def forward(self, data):
         x, edge_index, batch = data.x, data.edge_index, data.batch
 
-        x = F.relu(self.conv1(x, edge_index))
-        x, edge_index, batch = self.pool1(x, edge_index, batch)
-        x1 = torch.cat([global_max_pool(x, batch), global_mean_pool(x, batch)], dim=1)
+        # Encoder
+        x1 = F.relu(self.conv1(x, edge_index))
+        g1, x1_pooled, idx1, edge_index1 = self.pool1(edge_index, x1, batch)
 
-        x = F.relu(self.conv2(x, edge_index))
-        x, edge_index, batch = self.pool2(x, edge_index, batch)
-        x2 = torch.cat([global_max_pool(x, batch), global_mean_pool(x, batch)], dim=1)
+        x2 = F.relu(self.conv2(x1_pooled, edge_index1))
+        _, x2_pooled, idx2, edge_index2 = self.pool2(edge_index1, x2, batch)
 
-        x = F.relu(self.conv3(x, edge_index))
-        x, edge_index, batch = self.pool3(x, edge_index, batch)
-        x3 = torch.cat([global_max_pool(x, batch), global_mean_pool(x, batch)], dim=1)
+        # Middle Convolution
+        x_m = F.relu(self.midconv(x2_pooled, edge_index2))
 
-        x_d3 = F.relu(self.decoder3(x3))
-        x_d2 = F.relu(self.decoder2(x_d3 + x2))
-        x_d1 = F.log_softmax(self.decoder1(x_d2 + x1), dim=-1)
+        # Decoder
+        x_d2 = self.unpool2(g1, x_m, idx2)
+        x_d2 = F.relu(self.decoder2(x_d2, edge_index2))
 
-        return x_d1
+        x_d1 = self.unpool1(adjacency_matrix(edge_index), x_d2, idx1)
+        x_d1 = F.relu(self.decoder1(x_d1))
+
+        x_global_pool = global_mean_pool(x_d1, batch)
+
+        return x_global_pool
+
 
 
 class GraphUNet(nn.Module):
@@ -190,7 +210,7 @@ class GraphUNet(nn.Module):
 
     def forward(self, data):
         x, edge_index, batch = data.x, data.edge_index, data.batch
-
+    
         x = F.relu(self.conv1(x, edge_index))
         x, edge_index, _, batch, _, _ = self.pool1(x, edge_index, None, batch)
         x1 = torch.cat([global_max_pool(x, batch), global_mean_pool(x, batch)], dim=1)

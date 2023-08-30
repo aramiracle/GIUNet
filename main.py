@@ -35,9 +35,9 @@ for model_name in model_list:
 
         # Split dataset into train and test
         train_dataset, test_dataset = train_test_split(dataset, test_size=0.25, random_state=42)
-
-        train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-        test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
+        batch_size = 64
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+        test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
         # Initialize the model, optimizer, and criterion
         # Create the model instance dynamically based on the model name string
