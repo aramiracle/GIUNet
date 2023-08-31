@@ -5,5 +5,4 @@ __pycache__/
 .idea/
 test.py
 .gitignore
-data/
-results/
+data

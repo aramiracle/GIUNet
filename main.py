@@ -15,7 +15,7 @@ if not os.path.exists('results'):
     os.makedirs('results')
 
 # List of model names
-model_list = ['GIUNetCent']
+model_list = ['GraphUNetTopK', 'SimpleGraphUNet', 'GINModel']
 
 # Load and preprocess the MUTAG dataset
 dataset_list = ['MUTAG', 'ENZYMES', 'PROTEINS']
