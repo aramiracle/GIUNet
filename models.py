@@ -5,6 +5,7 @@ from torch_geometric.nn import GINConv,TopKPooling, global_max_pool, global_mean
 import networkx as nx
 import numpy as np
 import scipy.linalg
+import multiprocessing
 
 
 # Define a pooling layer for centrality features
@@ -14,7 +15,7 @@ class CentPool(nn.Module):
         self.ratio = ratio
         self.sigmoid = nn.Sigmoid()
         self.feature_proj = nn.Linear(in_dim, 1)
-        self.structure_proj = nn.Linear(6, 1)
+        self.structure_proj = nn.Linear(4, 1)
         self.final_proj = nn.Linear(2, 1)
         self.drop = nn.Dropout(p=p) if p > 0 else nn.Identity()
 
@@ -78,15 +79,36 @@ def approximate_matrix(a, k):
     _, v = scipy.linalg.eigh(a, subset_by_index=[0, min(k - 1, a.shape[0] - 1)])
     return torch.tensor(np.single(v))
 
-# Calculate various centralities for a graph
+def calculate_centrality(graph, centrality_function, result_queue):
+    centrality_values = list(centrality_function(graph).values())
+    result_queue.put(torch.tensor(centrality_values))
+
+# Calculate various centralities for a graph using multiprocessing
 def all_centralities(graph):
-    closeness = torch.tensor(list(nx.algorithms.centrality.closeness_centrality(graph).values()))
-    degree = torch.tensor(list(nx.algorithms.centrality.degree_centrality(graph).values()))
-    betweenness = torch.tensor(list(nx.algorithms.centrality.betweenness_centrality(graph).values()))
-    load = torch.tensor(list(nx.algorithms.centrality.load_centrality(graph).values()))
-    subgraph = torch.tensor(list(nx.algorithms.centrality.subgraph_centrality(graph).values()))
-    harmonic = torch.tensor(list(nx.algorithms.centrality.harmonic_centrality(graph).values()))
-    return torch.stack([closeness, degree, betweenness, load, subgraph, harmonic], dim=1)
+    centrality_methods = [
+        nx.algorithms.centrality.closeness_centrality,
+        nx.algorithms.centrality.degree_centrality,
+        nx.algorithms.centrality.betweenness_centrality,
+        nx.algorithms.centrality.load_centrality,
+    ]
+    
+    manager = multiprocessing.Manager()
+    result_queue = manager.Queue()
+    processes = []
+    
+    for method in centrality_methods:
+        process = multiprocessing.Process(target=calculate_centrality, args=(graph, method, result_queue))
+        processes.append(process)
+        process.start()
+    
+    for process in processes:
+        process.join()
+    
+    centralities = []
+    while not result_queue.empty():
+        centralities.append(result_queue.get())
+    
+    return torch.stack(centralities, dim=1)
 
 # Select top-k graph based on scores
 def top_k_pool(scores, edge_index, h, k):
@@ -113,6 +135,13 @@ def adjacency_matrix(edge_index, num_nodes=None):
 # Normalize the graph
 def norm_g(g):
     return g / (g.sum(1, keepdim=True) + 1e-8)
+
+
+class SimpleUnpool(nn.Module):
+    def forward(self, g, h, idx):
+        new_h = h.new_zeros([g.shape[0], h.shape[1]])
+        new_h[idx] = h
+        return new_h
 
 class Unpool(nn.Module):
     def forward(self, g, h, idx):
@@ -171,8 +200,8 @@ class GIUNetSpect(torch.nn.Module):
         ))
         self.decoder1 = nn.Linear(32, num_classes)  # Final classification layer
 
-        self.unpool2 = Unpool()  # Unpool layer after decoder2
-        self.unpool1 = Unpool()  # Unpool layer after decoder1
+        self.unpool2 = SimpleUnpool()  # Unpool layer after decoder2
+        self.unpool1 = SimpleUnpool()  # Unpool layer after decoder1
 
     def forward(self, data):
         x, edge_index, batch = data.x, data.edge_index, data.batch
@@ -247,21 +276,18 @@ class GIUNetCent(torch.nn.Module):
 
     def forward(self, data):
         x, edge_index, batch = data.x, data.edge_index, data.batch
-
-        # Encoder
+        
         x1 = F.relu(self.conv1(x, edge_index))
         g1, x1_pooled, idx1, edge_index1 = self.pool1(edge_index, x1)
-
+        
         x2 = F.relu(self.conv2(x1_pooled, edge_index1))
         _, x2_pooled, idx2, edge_index2 = self.pool2(edge_index1, x2)
-
-        # Middle Convolution
+        
         x_m = F.relu(self.midconv(x2_pooled, edge_index2))
-
-        # Decoder
+        
         x_d2 = self.unpool2(g1, x_m, idx2)
         x_d2 = F.relu(self.decoder2(x_d2, edge_index2))
-
+        
         x_d1 = self.unpool1(adjacency_matrix(edge_index), x_d2, idx1)
         x_d1 = F.relu(self.decoder1(x_d1))
 
