@@ -14,11 +14,11 @@ from tqdm import tqdm
 if not os.path.exists('results'):
     os.makedirs('results')
 
-# List of model names
-model_list = ['GraphUNetTopK', 'SimpleGraphUNet', 'GINModel']
+# List of model names]
+model_list = ['GINModel','GraphUNetTopK','SimpleGraphUNet','GIUNetSpect','GIUNetCent']
 
 # Load and preprocess the MUTAG dataset
-dataset_list = ['MUTAG', 'ENZYMES', 'PROTEINS']
+dataset_list = ['MUTAG','ENZYMES','PROTEINS']
 
 for model_name in model_list:
     

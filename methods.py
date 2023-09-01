@@ -37,6 +37,8 @@ def all_centralities(graph):
         nx.algorithms.centrality.degree_centrality,
         nx.algorithms.centrality.betweenness_centrality,
         nx.algorithms.centrality.load_centrality,
+        nx.algorithms.centrality.subgraph_centrality,
+        nx.algorithms.centrality.harmonic_centrality
     ]
     
     manager = multiprocessing.Manager()

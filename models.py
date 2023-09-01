@@ -27,9 +27,10 @@ class CentPool(nn.Module):
     def __init__(self, in_dim, ratio, p):
         super(CentPool, self).__init__()
         self.ratio = ratio
+        self.cents_num = 6
         self.sigmoid = nn.Sigmoid()
         self.feature_proj = nn.Linear(in_dim, 1)
-        self.structure_proj = nn.Linear(4, 1)
+        self.structure_proj = nn.Linear(self.cents_num, 1)
         self.final_proj = nn.Linear(2, 1)
         self.drop = nn.Dropout(p=p) if p > 0 else nn.Identity()
 
@@ -117,10 +118,10 @@ class GIUNetSpect(torch.nn.Module):
         self.pool2 = CentPool(64, ratio=0.8, p=0.5)  # Custom pooling layer
 
         self.midconv = GINConv(nn.Sequential(
-            nn.Linear(64, 64),
-            nn.BatchNorm1d(64),
+            nn.Linear(64, 128),
+            nn.BatchNorm1d(128),
             nn.ReLU(),
-            nn.Linear(64, 64),
+            nn.Linear(128, 64),
             nn.BatchNorm1d(64),
             nn.ReLU()
         ))
@@ -188,10 +189,10 @@ class GIUNetCent(torch.nn.Module):
         self.pool2 = CentPool(64, ratio=0.8, p=0.5)  # Custom pooling layer
 
         self.midconv = GINConv(nn.Sequential(
-            nn.Linear(64, 64),
-            nn.BatchNorm1d(64),
+            nn.Linear(64, 128),
+            nn.BatchNorm1d(128),
             nn.ReLU(),
-            nn.Linear(64, 64),
+            nn.Linear(128, 64),
             nn.BatchNorm1d(64),
             nn.ReLU()
         ))
@@ -231,7 +232,6 @@ class GIUNetCent(torch.nn.Module):
         return x_global_pool
     
 
-
 class GIUNetZero(torch.nn.Module):
     def __init__(self, num_features, num_classes):
         super(GIUNetZero, self).__init__()
@@ -257,10 +257,10 @@ class GIUNetZero(torch.nn.Module):
         self.pool2 = SimplePool(64, ratio=0.8, p=0.5)  # Custom pooling layer
 
         self.midconv = GINConv(nn.Sequential(
-            nn.Linear(64, 64),
-            nn.BatchNorm1d(64),
+            nn.Linear(64, 128),
+            nn.BatchNorm1d(128),
             nn.ReLU(),
-            nn.Linear(64, 64),
+            nn.Linear(128, 64),
             nn.BatchNorm1d(64),
             nn.ReLU()
         ))
@@ -301,7 +301,6 @@ class GIUNetZero(torch.nn.Module):
         x_global_pool = global_mean_pool(x_d1, batch)
 
         return x_global_pool
-
 
     
 class SimpleGraphUNet(nn.Module):
@@ -369,8 +368,6 @@ class SimpleGraphUNet(nn.Module):
         return x_global_pool
 
 
-
-    
 class GINModel(nn.Module):
     def __init__(self, num_features, num_classes):
         super(GINModel, self).__init__()
@@ -417,7 +414,8 @@ class GINModel(nn.Module):
         x_pooled = global_mean_pool(x_up2, batch)
 
         return x_pooled
-    
+
+
 class GraphUNetTopK(torch.nn.Module):
     def __init__(self, num_features, num_classes):
         super(GraphUNetTopK, self).__init__()
