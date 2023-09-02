@@ -5,7 +5,7 @@ import os
 dataset_list = ['MUTAG', 'ENZYMES', 'PROTEINS']
 num_datasets = len(dataset_list)
 directory = './results'
-models_list = set(os.listdir(directory)) - set(['visualization.png', 'embedding'])
+models_list = set(os.listdir(directory)) - set(['logs_visualization.png', 'embedding'])
 # Create a new figure
 plt.figure(figsize=(16, 6 * num_datasets))
 
