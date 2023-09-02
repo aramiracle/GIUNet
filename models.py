@@ -3,10 +3,18 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import GINConv,TopKPooling, global_max_pool, global_mean_pool
 import networkx as nx
-import numpy as np
-import scipy.linalg
-import multiprocessing
+from methods import *
 
+
+def make_convolution(in_channels, out_channels):
+    return GINConv(nn.Sequential(
+        nn.Linear(in_channels, out_channels),
+        nn.BatchNorm1d(out_channels),
+        nn.ReLU(),
+        nn.Linear(out_channels, out_channels),
+        nn.BatchNorm1d(out_channels),
+        nn.ReLU()
+    ))
 
 # Define a pooling layer for centrality features
 class CentPool(nn.Module):
@@ -56,86 +64,6 @@ class SpectPool(nn.Module):
         edge_index = edge_index[:, idx]
         return g, h, idx, edge_index
 
-# Convert edge_index to NetworkX graph
-def edge_index_to_nx_graph(edge_index, num_nodes):
-    edge_list = edge_index.t().tolist()
-    G = nx.Graph()
-    G.add_nodes_from(range(num_nodes))
-    G.add_edges_from(edge_list)
-    return G
-
-#Calculatiing normalized Laplacian of graph
-def normalized_laplacian(adjacency_matrix: torch.Tensor) -> torch.Tensor:
-    """ Computes the symmetric normalized Laplacian matrix """
-    num_nodes = adjacency_matrix.shape[0]
-    d = torch.sum(adjacency_matrix, dim=1)
-    Dinv_sqrt = torch.diag(1 / torch.sqrt(d))
-    Ln = torch.eye(num_nodes, device=adjacency_matrix.device) - torch.mm(torch.mm(Dinv_sqrt, adjacency_matrix), Dinv_sqrt)
-    Ln = 0.5 * (Ln + Ln.T)
-    return Ln
-
-#Approximataion of eigenvectors of matrix
-def approximate_matrix(a, k):
-    _, v = scipy.linalg.eigh(a, subset_by_index=[0, min(k - 1, a.shape[0] - 1)])
-    return torch.tensor(np.single(v))
-
-def calculate_centrality(graph, centrality_function, result_queue):
-    centrality_values = list(centrality_function(graph).values())
-    result_queue.put(torch.tensor(centrality_values))
-
-# Calculate various centralities for a graph using multiprocessing
-def all_centralities(graph):
-    centrality_methods = [
-        nx.algorithms.centrality.closeness_centrality,
-        nx.algorithms.centrality.degree_centrality,
-        nx.algorithms.centrality.betweenness_centrality,
-        nx.algorithms.centrality.load_centrality,
-    ]
-    
-    manager = multiprocessing.Manager()
-    result_queue = manager.Queue()
-    processes = []
-    
-    for method in centrality_methods:
-        process = multiprocessing.Process(target=calculate_centrality, args=(graph, method, result_queue))
-        processes.append(process)
-        process.start()
-    
-    for process in processes:
-        process.join()
-    
-    centralities = []
-    while not result_queue.empty():
-        centralities.append(result_queue.get())
-    
-    return torch.stack(centralities, dim=1)
-
-# Select top-k graph based on scores
-def top_k_pool(scores, edge_index, h, k):
-    num_nodes = h.shape[0]
-    values, idx = torch.topk(scores, max(2, int(k * num_nodes)))  # Get top-k values and indices
-    new_h = h[idx, :]  # Select top-k nodes
-    values = torch.unsqueeze(values, -1)
-    new_h = torch.mul(new_h, values)  # Apply weights to nodes
-    g = adjacency_matrix(edge_index, num_nodes=num_nodes)  # Create adjacency matrix
-    un_g = torch.matmul(g.bool().float(), torch.matmul(g.bool().float(), g.bool().float())).bool().float()  # Calculate unnormalized graph
-    un_g = un_g[idx, :][:, idx]  # Select top-k subgraph
-    g = norm_g(un_g)  # Normalize the graph
-    return g, new_h, idx
-
-
-# Create adjacency matrix from edge_index
-def adjacency_matrix(edge_index, num_nodes=None):
-    if num_nodes is None:
-        num_nodes = edge_index.max().item() + 1
-    adj_matrix = torch.zeros((num_nodes, num_nodes))
-    adj_matrix[edge_index[0], edge_index[1]] = 1
-    return adj_matrix
-
-# Normalize the graph
-def norm_g(g):
-    return g / (g.sum(1, keepdim=True) + 1e-8)
-
 
 class SimpleUnpool(nn.Module):
     def forward(self, g, h, idx):
@@ -157,47 +85,19 @@ class Unpool(nn.Module):
         return new_h
     
 #Creating model that uses centralities
-class GIUNetSpect(torch.nn.Module):
+class GIUNetSpect(nn.Module):
     def __init__(self, num_features, num_classes):
         super(GIUNetSpect, self).__init__()
 
-        self.conv1 = GINConv(nn.Sequential(
-            nn.Linear(num_features, 32),
-            nn.BatchNorm1d(32),
-            nn.ReLU(),
-            nn.Linear(32, 32),
-            nn.BatchNorm1d(32),
-            nn.ReLU()
-        ))
+        self.conv1 = make_convolution(num_features, 32)
         self.pool1 = CentPool(32, ratio=0.8, p=0.5)  # Custom pooling layer
 
-        self.conv2 = GINConv(nn.Sequential(
-            nn.Linear(32, 64),
-            nn.BatchNorm1d(64),
-            nn.ReLU(),
-            nn.Linear(64, 64),
-            nn.BatchNorm1d(64),
-            nn.ReLU()
-        ))
+        self.conv2 = make_convolution(32, 64)
         self.pool2 = CentPool(64, ratio=0.8, p=0.5)  # Custom pooling layer
 
-        self.midconv = GINConv(nn.Sequential(
-            nn.Linear(64, 64),
-            nn.BatchNorm1d(64),
-            nn.ReLU(),
-            nn.Linear(64, 64),
-            nn.BatchNorm1d(64),
-            nn.ReLU()
-        ))
+        self.midconv = make_convolution(64, 64)
 
-        self.decoder2 = GINConv(nn.Sequential(
-            nn.Linear(64, 32),
-            nn.BatchNorm1d(32),
-            nn.ReLU(),
-            nn.Linear(32, 32),
-            nn.BatchNorm1d(32),
-            nn.ReLU()
-        ))
+        self.decoder2 = make_convolution(64, 32)
         self.decoder1 = nn.Linear(32, num_classes)  # Final classification layer
 
         self.unpool2 = SimpleUnpool()  # Unpool layer after decoder2
@@ -227,48 +127,19 @@ class GIUNetSpect(torch.nn.Module):
 
         return x_global_pool
 
-#Creating model that uses eigenvectors
-class GIUNetCent(torch.nn.Module):
+class GIUNetCent(nn.Module):
     def __init__(self, num_features, num_classes):
         super(GIUNetCent, self).__init__()
 
-        self.conv1 = GINConv(nn.Sequential(
-            nn.Linear(num_features, 32),
-            nn.BatchNorm1d(32),
-            nn.ReLU(),
-            nn.Linear(32, 32),
-            nn.BatchNorm1d(32),
-            nn.ReLU()
-        ))
+        self.conv1 = make_convolution(num_features, 32)
         self.pool1 = CentPool(32, ratio=0.8, p=0.5)  # Custom pooling layer
 
-        self.conv2 = GINConv(nn.Sequential(
-            nn.Linear(32, 64),
-            nn.BatchNorm1d(64),
-            nn.ReLU(),
-            nn.Linear(64, 64),
-            nn.BatchNorm1d(64),
-            nn.ReLU()
-        ))
+        self.conv2 = make_convolution(32, 64)
         self.pool2 = CentPool(64, ratio=0.8, p=0.5)  # Custom pooling layer
 
-        self.midconv = GINConv(nn.Sequential(
-            nn.Linear(64, 64),
-            nn.BatchNorm1d(64),
-            nn.ReLU(),
-            nn.Linear(64, 64),
-            nn.BatchNorm1d(64),
-            nn.ReLU()
-        ))
+        self.midconv = make_convolution(64, 64)
 
-        self.decoder2 = GINConv(nn.Sequential(
-            nn.Linear(64, 32),
-            nn.BatchNorm1d(32),
-            nn.ReLU(),
-            nn.Linear(32, 32),
-            nn.BatchNorm1d(32),
-            nn.ReLU()
-        ))
+        self.decoder2 = make_convolution(64, 32)
         self.decoder1 = nn.Linear(32, num_classes)  # Final classification layer
 
         self.unpool2 = Unpool()  # Unpool layer after decoder2
@@ -300,32 +171,11 @@ class GraphUNetTopK(nn.Module):
     def __init__(self, num_features, num_classes):
         super(GraphUNetTopK, self).__init__()
 
-        self.conv1 = GINConv(nn.Sequential(
-            nn.Linear(num_features, 32),
-            nn.BatchNorm1d(32),
-            nn.ReLU(),
-            nn.Linear(32, 32),
-            nn.BatchNorm1d(32),
-            nn.ReLU()
-        ))
+        self.conv1 = make_convolution(num_features, 32)
         self.pool1 = TopKPooling(32, ratio=0.8)
-        self.conv2 = GINConv(nn.Sequential(
-            nn.Linear(32, 64),
-            nn.BatchNorm1d(64),
-            nn.ReLU(),
-            nn.Linear(64, 64),
-            nn.BatchNorm1d(64),
-            nn.ReLU()
-        ))
+        self.conv2 = make_convolution(32, 64)
         self.pool2 = TopKPooling(64, ratio=0.8)
-        self.conv3 = GINConv(nn.Sequential(
-            nn.Linear(64, 128),
-            nn.BatchNorm1d(128),
-            nn.ReLU(),
-            nn.Linear(128, 128),
-            nn.BatchNorm1d(128),
-            nn.ReLU()
-        ))
+        self.conv3 = make_convolution(64, 128)
         self.pool3 = TopKPooling(128, ratio=0.8)
 
         # Decoder
@@ -373,30 +223,9 @@ class SimpleGraphUNet(nn.Module):
         super(SimpleGraphUNet, self).__init__()
 
         # Encoder
-        self.conv1 = GINConv(nn.Sequential(
-            nn.Linear(num_features, 64),
-            nn.BatchNorm1d(64),
-            nn.ReLU(),
-            nn.Linear(64, 64),
-            nn.BatchNorm1d(64),
-            nn.ReLU()
-        ))
-        self.conv2 = GINConv(nn.Sequential(
-            nn.Linear(64, 128),
-            nn.BatchNorm1d(128),
-            nn.ReLU(),
-            nn.Linear(128, 128),
-            nn.BatchNorm1d(128),
-            nn.ReLU()
-        ))
-        self.conv3 = GINConv(nn.Sequential(
-            nn.Linear(128, 256),
-            nn.BatchNorm1d(256),
-            nn.ReLU(),
-            nn.Linear(256, 256),
-            nn.BatchNorm1d(256),
-            nn.ReLU()
-        ))
+        self.conv1 = make_convolution(num_features, 64)
+        self.conv2 = make_convolution(64, 128)
+        self.conv3 = make_convolution(128, 256)
 
         # Decoder
         self.decoder3 = nn.Sequential(
@@ -433,35 +262,16 @@ class SimpleGraphUNet(nn.Module):
         return x_global_pool
 
 
-
     
 class GINModel(nn.Module):
     def __init__(self, num_features, num_classes):
         super(GINModel, self).__init__()
 
-        self.downconv1 = GINConv(nn.Sequential(
-            nn.Linear(num_features, 64),
-            nn.ReLU(),
-            nn.Linear(64, 64)
-        ))
-
-        self.downconv2 = GINConv(nn.Sequential(
-            nn.Linear(64, 64),
-            nn.ReLU(),
-            nn.Linear(64, 64)
-        ))
-
-        self.upconv1 = GINConv(nn.Sequential(
-            nn.Linear(64 + num_features, 64),
-            nn.ReLU(),
-            nn.Linear(64, 64)
-        ))
-
-        self.upconv2 = GINConv(nn.Sequential(
-            nn.Linear(64 + 64, 64),
-            nn.ReLU(),
-            nn.Linear(64, num_classes)
-        ))
+        self.downconv1 = make_convolution(num_features, 64)
+        self.downconv2 = make_convolution(64, 64)
+        self.upconv1 = make_convolution(64 + num_features, 64)
+        self.upconv2 = make_convolution(64 + 64, 64)
+        self.final_layer = nn.Linear(64, num_classes)
 
     def forward(self, data):
         x, edge_index, batch = data.x, data.edge_index, data.batch
@@ -477,7 +287,9 @@ class GINModel(nn.Module):
         x_up2 = torch.cat([x_up1, x2], dim=1)
         x_up2 = self.upconv2(x_up2, edge_index)
 
-        # Pooling layer
-        x_pooled = global_mean_pool(x_up2, batch)
+        # Final classification layer
+        x_final = self.final_layer(x_up2)
 
-        return x_pooled
+        x_global_pool = global_mean_pool(x_final, batch)
+
+        return x_global_pool
