@@ -112,16 +112,8 @@ def main():
             batch_size = 64
             test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-            # Initialize the model, optimizer, and criterion
-            if model_name == 'GINModel':
-                model = GINModel(num_features, num_classes)
-            elif model_name == 'SimpleGraphUNet':
-                model = SimpleGraphUNet(num_features, num_classes)
-            elif model_name == 'GraphUNetTopK':
-                model = GraphUNetTopK(num_features, num_classes)
-            else:
-                raise ValueError(f"Unknown model name: {model_name}")
-
+            # Initialize the model using globals()
+            model = globals()[model_name](num_features, num_classes)
             model.load_state_dict(torch.load(os.path.join(model_results_dir, f'best_model_{dataset_name}.pth')))
             model.eval()
 
