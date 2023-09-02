@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 from models import GINModel, SimpleGraphUNet, GraphUNetTopK
 from tqdm import tqdm
 
-def visualize_embeddings(model, test_loader, dataset_name, model_name):
+def visualize_embeddings(model, test_loader, dataset_name, model_name, save_dir):
     # Collect graph embeddings and labels
     embeddings = []
     labels = []
@@ -27,12 +27,12 @@ def visualize_embeddings(model, test_loader, dataset_name, model_name):
 
     if embeddings.shape[1] >= 3:
         # If the number of features is 3 or more, visualize in 3D
-        visualize_embeddings_3d(embeddings, labels, dataset_name, model_name)
+        visualize_embeddings_3d(embeddings, labels, dataset_name, model_name, save_dir)
     else:
         # Otherwise, visualize in 2D
-        visualize_embeddings_2d(embeddings, labels, dataset_name, model_name)
+        visualize_embeddings_2d(embeddings, labels, dataset_name, model_name, save_dir)
 
-def visualize_embeddings_2d(embeddings, labels, dataset_name, model_name):
+def visualize_embeddings_2d(embeddings, labels, dataset_name, model_name, save_dir):
     # Apply t-SNE for dimensionality reduction to 2D
     tsne = TSNE(n_components=2, random_state=42)
     embeddings_2d = tsne.fit_transform(embeddings)
@@ -50,9 +50,13 @@ def visualize_embeddings_2d(embeddings, labels, dataset_name, model_name):
 
     plt.legend()
     plt.title(f't-SNE 2D Visualization of Graph Embeddings ({model_name} - {dataset_name})')
+    
+    # Save the figure
+    save_path = os.path.join(save_dir, f'tsne_2d_{model_name}_{dataset_name}.png')
+    plt.savefig(save_path)
     plt.show()
 
-def visualize_embeddings_3d(embeddings, labels, dataset_name, model_name):
+def visualize_embeddings_3d(embeddings, labels, dataset_name, model_name, save_dir):
     # Check if there are at least three features for 3D visualization
     if embeddings.shape[1] >= 3:
         # Apply PCA to reduce dimensionality to 3D
@@ -79,10 +83,14 @@ def visualize_embeddings_3d(embeddings, labels, dataset_name, model_name):
 
         ax.legend()
         ax.set_title(f't-SNE 3D Visualization of Graph Embeddings ({model_name} - {dataset_name})')
+        
+        # Save the figure
+        save_path = os.path.join(save_dir, f'tsne_3d_{model_name}_{dataset_name}.png')
+        plt.savefig(save_path)
         plt.show()
     else:
         print("The dataset has fewer than three features. Switching to 2D visualization.")
-        visualize_embeddings_2d(embeddings, labels, dataset_name, model_name)
+        visualize_embeddings_2d(embeddings, labels, dataset_name, model_name, save_dir)
 
 def main():
     # Define the list of models and datasets
@@ -123,8 +131,15 @@ def main():
             if not os.path.exists(embedding_results_dir):
                 os.makedirs(embedding_results_dir)
 
-            # Visualize graph embeddings
-            visualize_embeddings(model, test_loader, dataset_name, model_name)
+            # Specify the directory to save figures
+            save_figure_dir = os.path.join(embedding_results_dir, 'figures')
+
+            # Create the figure directory if it doesn't exist
+            if not os.path.exists(save_figure_dir):
+                os.makedirs(save_figure_dir)
+
+            # Visualize and save graph embeddings
+            visualize_embeddings(model, test_loader, dataset_name, model_name, save_figure_dir)
 
 if __name__ == '__main__':
     main()
