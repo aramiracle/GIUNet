@@ -12,7 +12,7 @@ plt.figure(figsize=(16, 6 * num_datasets))
 for model in models_list:
     for i, dataset in enumerate(dataset_list):
         model_results_dir = os.path.join('results', model)
-        log_file_path = os.path.join(model_results_dir, 'logs_for_' + dataset + '.csv')
+        log_file_path = os.path.join(model_results_dir, f'logs_for_{dataset}.csv')
         log_df = pd.read_csv(log_file_path)
 
         # Extract data from the DataFrame

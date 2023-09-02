@@ -19,7 +19,7 @@ def visualize_embeddings(model, test_loader, dataset_name, model_name, save_dir)
             output = model(data)
         embeddings.extend(output.cpu().numpy())
         labels.extend(data.y.cpu().numpy())
-
+        
     embeddings = np.array(embeddings)
     labels = np.array(labels)
 
@@ -57,13 +57,10 @@ def visualize_embeddings_2d(embeddings, labels, dataset_name, model_name, save_d
 def visualize_embeddings_3d(embeddings, labels, dataset_name, model_name, save_dir):
     # Check if there are at least three features for 3D visualization
     if embeddings.shape[1] >= 3:
-        # Apply PCA to reduce dimensionality to 3D
-        pca = PCA(n_components=3)
-        embeddings_3d = pca.fit_transform(embeddings)
 
-        # Apply t-SNE for further dimensionality reduction to 3D
+        # Apply t-SNE for dimensionality reduction to 3D
         tsne = TSNE(n_components=3, random_state=42)
-        embeddings_3d = tsne.fit_transform(embeddings_3d)
+        embeddings_3d = tsne.fit_transform(embeddings)
 
         # Get unique labels and assign colors
         unique_labels = np.unique(labels)
