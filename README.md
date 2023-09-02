@@ -7,7 +7,7 @@ This is a contemporary PyTorch implementation for the task of graph classificati
 ## Table of Contents
 
 - [Usage](#usage)
-- [Installing dependencies](#Installing)
+- [Installing](#Installing)
 
 ## Usage
 
