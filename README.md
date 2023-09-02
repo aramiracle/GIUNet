@@ -1,4 +1,4 @@
-# Project Name
+# Graph isomorphism UNet
 
 ## Description
 
