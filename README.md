@@ -35,5 +35,4 @@ To run this project you need to install some python packages that mentioned in r
 
 ```
 pip install -r requirements.txt
-
 ```
