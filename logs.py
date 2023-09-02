@@ -5,7 +5,7 @@ import os
 dataset_list = ['MUTAG', 'ENZYMES', 'PROTEINS']
 num_datasets = len(dataset_list)
 directory = './results'
-models_list = set(os.listdir(directory)) - set(['visualization.png'])
+models_list = set(os.listdir(directory)) - set(['visualization.png', 'embedding'])
 # Create a new figure
 plt.figure(figsize=(16, 6 * num_datasets))
 
@@ -40,5 +40,5 @@ for model in models_list:
         plt.legend()
 
     plt.tight_layout()
-visulization_file_path = os.path.join('results', 'visualization')
+visulization_file_path = os.path.join('results', 'logs_visualization')
 plt.savefig(visulization_file_path)
