@@ -1,11 +1,36 @@
 import os
 import torch
 import torch.nn as nn
+from sklearn.model_selection import train_test_split
+from torch_geometric.datasets import TUDataset
 import torch.optim as optim
 from tqdm import tqdm
 import pandas as pd
 from models import *
 
+
+def create_results_directory():
+    if not os.path.exists('results'):
+        os.makedirs('results')
+
+def create_model_results_directory(model_name):
+    model_results_dir = os.path.join('results', model_name)
+    if not os.path.exists(model_results_dir):
+        os.makedirs(model_results_dir)
+    return model_results_dir
+
+def preprocess_dataset(dataset_name):
+    dataset_dir = os.path.join('datasets', dataset_name)
+    if not os.path.exists(dataset_dir):
+        os.makedirs(dataset_dir)
+    dataset = TUDataset(root=dataset_dir, name=dataset_name)
+    num_classes = dataset.num_classes
+    num_features = dataset.num_features
+    return dataset, num_features, num_classes
+
+def split_dataset(dataset, test_size=0.25):
+    train_dataset, test_dataset = train_test_split(dataset, test_size=test_size, random_state=42)
+    return train_dataset, test_dataset
 
 def create_model(model_name, num_features, num_classes):
     model = globals()[model_name](num_features, num_classes)
