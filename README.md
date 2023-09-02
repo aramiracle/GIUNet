@@ -7,6 +7,8 @@ This is a contemporary PyTorch implementation for the task of graph classificati
 ## Table of Contents
 
 - [Usage](#usage)
+- [Installing dependencies](#Installing)
+
 ## Usage
 
 This repository is seen as a pipeline for training and evaluating graph neural network models on graph classification tasks by using graph isomorphism networks(GIN). An overview of what this project accomplishes is provided below:
@@ -26,3 +28,12 @@ Embedding Visualization: Code for visualizing the embeddings learned by the mode
 Model Saving: The state_dict of the best-performing model is saved to disk for subsequent use or evaluation.
 
 Overall, this code is regarded as clear and well-documented. Best practices for organizing machine learning experiments are followed.
+
+##Installing dependencies
+
+To run this project you need to install some python packages that mentioned in requirement.txt. To install the dependencies listed in requirements.txt, open a command prompt or terminal, navigate to your project directory, and run the following command:
+
+```
+pip install -r requirements.txt
+
+```
