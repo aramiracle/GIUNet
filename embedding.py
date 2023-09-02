@@ -3,13 +3,11 @@ import torch
 import numpy as np
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 from sklearn.decomposition import PCA
 from torch_geometric.datasets import TUDataset
 from torch_geometric.data import DataLoader
 from sklearn.model_selection import train_test_split
 from models import GINModel, SimpleGraphUNet, GraphUNetTopK
-from tqdm import tqdm
 
 def visualize_embeddings(model, test_loader, dataset_name, model_name, save_dir):
     # Collect graph embeddings and labels
