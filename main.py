@@ -15,7 +15,7 @@ if not os.path.exists('results'):
     os.makedirs('results')
 
 # List of model names]
-model_list = ['GINModel','GraphUNetTopK','SimpleGraphUNet','GIUNetSpect','GIUNetCent']
+model_list = ['GINModel', 'SimpleGraphUNet', 'GraphUNetTopK']
 
 # Load and preprocess the MUTAG dataset
 dataset_list = ['MUTAG','ENZYMES','PROTEINS']
@@ -29,7 +29,10 @@ for model_name in model_list:
 
     for dataset_name in dataset_list:
 
-        dataset = TUDataset(root=dataset_name+'_Dataset', name=dataset_name)
+        dataset_dir = os.path.join('datasets', dataset_name)
+        if not os.path.exists(dataset_dir):
+            os.makedirs(dataset_dir)
+        dataset = TUDataset(root=dataset_dir, name=dataset_name)
         num_classes = dataset.num_classes
         num_features = dataset.num_features
 
@@ -53,7 +56,7 @@ for model_name in model_list:
         logs = []
 
         # Training loop
-        epochs = 200
+        epochs = 300
         for epoch in tqdm(range(epochs)):
             # Train the model
             model.train()
@@ -62,6 +65,7 @@ for model_name in model_list:
             total_samples = 0
 
             for data in train_loader:
+                
                 optimizer.zero_grad()
                 output = model(data)
 

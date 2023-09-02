@@ -23,8 +23,9 @@ def normalized_laplacian(adjacency_matrix: torch.Tensor) -> torch.Tensor:
     return Ln
 
 #Approximataion of eigenvectors of matrix
-def approximate_matrix(a, k):
-    _, v = scipy.linalg.eigh(a, subset_by_index=[0, min(k - 1, a.shape[0] - 1)])
+def approximate_matrix(g, k):
+    _, v = scipy.linalg.eigh(g, subset_by_index=[0, min(k - 1, g.shape[0] - 1)])
+    app_matrix = torch.zeros(g.shape[0])
     return torch.tensor(np.single(v))
 
 def calculate_centrality(graph, centrality_function, result_queue, index):

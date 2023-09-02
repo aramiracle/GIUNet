@@ -1,6 +1,4 @@
-ENZYMES_Dataset/
-MUTAG_Dataset/
-PROTEINS_Dataset/
+datasets/
 __pycache__/
 .idea/
 test.py
