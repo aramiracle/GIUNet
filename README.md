@@ -2,7 +2,7 @@
 
 ## Description
 
-This is a contemporary PyTorch implementation for the task of graph classification using graph neural networks (GNN). It is built upon the GIN (Graph Isomorphisms Networks) approach, which was introduced in the paper titled "Graph Isomorphism UNet" authored by Alireza Amouzad, Zahra Dehghanian, Saeed Saravani, Maryam Amirmazlaghani, and Behnam Roshanfekr, affiliated with Amirkabir University of Technology.
+This is a contemporary PyTorch implementation for the task of graph classification using graph neural networks (GNN). It is built mainly upon the GIN (Graph Isomorphisms Networks) approach, and some novel models which is introduced in the paper titled "Graph Isomorphism UNet" authored by Alireza Amouzad, Zahra Dehghanian, Saeed Saravani, Maryam Amirmazlaghani, and Behnam Roshanfekr, affiliated with Amirkabir University of Technology.
 
 ## Table of Contents
 
