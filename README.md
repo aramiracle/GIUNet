@@ -43,6 +43,8 @@ Several graph neural network models have been defined, including:
 - GIUNetSpect
 - GIUNetCent
 
+First three models are rapid performing models that their results are impressive, and last two novel models are proposed by authors.
+
 These models utilize PyTorch Geometric's GINConv, TopKPooling, global pooling, and custom pooling layers.
 
 ### Training and Testing

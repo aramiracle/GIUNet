@@ -27,25 +27,29 @@ def approximate_matrix(g, k):
     _, v = scipy.linalg.eigh(g, subset_by_index=[0, min(k - 1, g.shape[0] - 1)])
     return torch.tensor(np.single(v))
 
-def calculate_centrality(graph, centrality_function, result_queue, index):
-    centrality_values = list(centrality_function(graph).values())
-    result_queue.put((index, torch.tensor(centrality_values)))
+def calculate_centrality(graph, method, result_queue, index):
+    centrality = method(graph)
+    result_queue.put((index, centrality))
+
+def extract_numerical_values(centrality_dict):
+    # Extract numerical values from the centrality dictionary
+    return [value for value in centrality_dict.values()]
 
 def all_centralities(graph):
     centrality_methods = [
-        nx.algorithms.centrality.closeness_centrality,
-        nx.algorithms.centrality.degree_centrality,
-        nx.algorithms.centrality.betweenness_centrality,
-        nx.algorithms.centrality.load_centrality,
-        nx.algorithms.centrality.subgraph_centrality,
-        nx.algorithms.centrality.harmonic_centrality
+        (nx.algorithms.centrality.closeness_centrality, "closeness_centrality"),
+        (nx.algorithms.centrality.degree_centrality, "degree_centrality"),
+        (nx.algorithms.centrality.betweenness_centrality, "betweenness_centrality"),
+        (nx.algorithms.centrality.load_centrality, "load_centrality"),
+        (nx.algorithms.centrality.subgraph_centrality, "subgraph_centrality"),
+        (nx.algorithms.centrality.harmonic_centrality, "harmonic_centrality")
     ]
     
     manager = multiprocessing.Manager()
     result_queue = manager.Queue()
     processes = []
     
-    for index, method in enumerate(centrality_methods):
+    for index, (method, name) in enumerate(centrality_methods):
         process = multiprocessing.Process(target=calculate_centrality, args=(graph, method, result_queue, index))
         processes.append(process)
         process.start()
@@ -53,10 +57,14 @@ def all_centralities(graph):
     for process in processes:
         process.join()
     
-    centralities = [None] * len(centrality_methods)
+    centralities_dict = {}
     while not result_queue.empty():
         index, centrality = result_queue.get()
-        centralities[index] = centrality
+        method_name = centrality_methods[index][1]
+        centralities_dict[method_name] = centrality
+    
+    # Extract numerical values and convert them to tensors with dtype=float
+    centralities = [torch.tensor(extract_numerical_values(centralities_dict[method_name]), dtype=torch.float) for (_, method_name) in centrality_methods]
     
     return torch.stack(centralities, dim=1)
 

@@ -21,9 +21,10 @@ class CentPool(nn.Module):
     def __init__(self, in_dim, ratio, p):
         super(CentPool, self).__init__()
         self.ratio = ratio
+        self.cent_num = 6
         self.sigmoid = nn.Sigmoid()
         self.feature_proj = nn.Linear(in_dim, 1)
-        self.structure_proj = nn.Linear(4, 1)
+        self.structure_proj = nn.Linear(self.cent_num, 1)
         self.final_proj = nn.Linear(2, 1)
         self.drop = nn.Dropout(p=p) if p > 0 else nn.Identity()
 

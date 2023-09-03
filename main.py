@@ -7,8 +7,8 @@ from utils import *
 def main():
     create_results_directory()
 
-    model_list = ['GINModel', 'SimpleGraphUNet', 'GraphUNetTopK']
-    dataset_list = ['MUTAG', 'ENZYMES', 'PROTEINS']
+    model_list = ['GIUNetCent', 'GIUNetSpect']
+    dataset_list = ['MUTAG']
 
     for model_name in model_list:
         model_results_dir = create_model_results_directory(model_name)

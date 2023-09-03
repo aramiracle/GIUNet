@@ -7,7 +7,7 @@ from sklearn.decomposition import PCA
 from torch_geometric.datasets import TUDataset
 from torch_geometric.data import DataLoader
 from sklearn.model_selection import train_test_split
-from models import GINModel, SimpleGraphUNet, GraphUNetTopK
+from models import *
 
 def create_results_directory():
     if not os.path.exists('results'):
@@ -105,8 +105,8 @@ def visualize_embeddings_3d(embeddings, labels, dataset_name, model_name, save_d
 
 def main():
     create_results_directory()
-    model_names = ['GINModel', 'SimpleGraphUNet', 'GraphUNetTopK']
-    dataset_names = ['MUTAG', 'ENZYMES', 'PROTEINS']
+    model_names = ['GIUNetCent', 'GIUNetSpect']
+    dataset_names = ['MUTAG']
 
     for model_name in model_names:
         for dataset_name in dataset_names:
