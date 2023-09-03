@@ -38,12 +38,11 @@ def create_model(model_name, num_features, num_classes):
     criterion = nn.CrossEntropyLoss()
     return model, optimizer, criterion
 
-def train_and_test_model(model, optimizer, criterion, train_loader, test_loader, model_results_dir, dataset_name):
+def train_and_test_model(model, optimizer, criterion, train_loader, test_loader, model_results_dir, dataset_name, epochs):
     max_test_accuracy = 0.0
     best_model_state = None
     logs = []
-
-    epochs = 300
+    
     for epoch in tqdm(range(epochs)):
         # Train the model
         model.train()
