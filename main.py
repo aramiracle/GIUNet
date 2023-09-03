@@ -6,8 +6,8 @@ import random
 def main():
     create_results_directory()
 
-    model_list = ['SimpleGraphUNet']
-    dataset_list = ['MUTAG']
+    model_list = ['SimpleGraphUNet', 'GraphUNetTopK', 'GINModel']
+    dataset_list = ['MUTAG', 'ENZYMES', 'PROTEINS']
     num_runs = 10  # Number of runs with different random seeds
 
     for model_name in model_list:
@@ -18,7 +18,7 @@ def main():
             train_dataset, test_dataset = split_dataset(dataset)
 
             batch_size = 64
-            fold_accuracies = []
+            max_fold_accuracies = []  # Store maximum accuracy for each run
 
             for run in range(num_runs):
                 # Set a different random seed for each run
@@ -34,12 +34,13 @@ def main():
 
                 fold_accuracy = train_and_test_model(model, optimizer, criterion, train_loader, test_loader, model_results_dir, dataset_name)
 
-                fold_accuracies.append(fold_accuracy)
+                max_fold_accuracies.append(fold_accuracy)
 
                 print(f"Run {run + 1} Accuracy: {fold_accuracy:.4f}")
 
-            average_accuracy = sum(fold_accuracies) / num_runs
-            print(f"Average Accuracy for {num_runs} runs with different seeds: {average_accuracy:.4f}")
+            # Calculate the average of the maximum accuracies for all runs
+            average_max_accuracy = sum(max_fold_accuracies) / num_runs
+            print(f"Average of Maximum Accuracies for {num_runs} runs with different seeds: {average_max_accuracy:.4f}")
 
 if __name__ == "__main__":
     main()
