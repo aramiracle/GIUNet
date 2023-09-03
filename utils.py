@@ -97,6 +97,8 @@ def train_and_test_model(model, optimizer, criterion, train_loader, test_loader,
 
     print(f'Max Test Accuracy: {max_test_accuracy:.4f}')
 
+    return test_accuracy
+
 def test(model, loader, criterion):
     model.eval()
     total_loss = 0
