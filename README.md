@@ -17,6 +17,8 @@ This repository serves as a pipeline for training and evaluating graph neural ne
 
 ## Method
 
+Complete novel method is introduced in paper. The model's architecture and pooling method is as follows:
+
 ### GIUNet Structure
 
 ![model_archotecture](./paper_images/Model_Architecture.jpg)
