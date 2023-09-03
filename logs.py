@@ -42,3 +42,4 @@ for model in models_list:
     plt.tight_layout()
 visulization_file_path = os.path.join('results', 'logs_visualization')
 plt.savefig(visulization_file_path)
+plt.show()
