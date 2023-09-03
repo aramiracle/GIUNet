@@ -100,8 +100,8 @@ class GIUNetSpect(nn.Module):
         self.decoder2 = make_convolution(64, 32)
         self.decoder1 = nn.Linear(32, num_classes)  # Final classification layer
 
-        self.unpool2 = SimpleUnpool()  # Unpool layer after decoder2
-        self.unpool1 = SimpleUnpool()  # Unpool layer after decoder1
+        self.unpool2 = Unpool()  # Unpool layer after decoder2
+        self.unpool1 = Unpool()  # Unpool layer after decoder1
 
     def forward(self, data):
         x, edge_index, batch = data.x, data.edge_index, data.batch
