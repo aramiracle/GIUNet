@@ -8,6 +8,7 @@ This is a contemporary PyTorch implementation for the task of graph classificati
 
 - [Usage](#usage)
 - [Method](#method)
+- [Details](#details)
 - [Installing](#installing)
 
 ## Usage
@@ -20,9 +21,11 @@ This repository serves as a pipeline for training and evaluating graph neural ne
 
 ![model_archotecture](./paper_images/Model_Architecture.jpg)
 
-## pqPoolins
+### pqPoolins
 
 ![pqPool](./paper_images/Pooling.jpg)
+
+## Details
 
 ### Data Loading and Preprocessing
 
