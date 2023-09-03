@@ -7,18 +7,20 @@ This is a contemporary PyTorch implementation for the task of graph classificati
 ## Table of Contents
 
 - [Usage](#usage)
-- [Methods](#methods)
+- [Method](#method)
 - [Installing](#installing)
 
 ## Usage
 
 This repository serves as a pipeline for training and evaluating graph neural network models on graph classification tasks using graph isomorphism networks (GIN). An overview of what this project accomplishes is provided below:
 
-##Methods
+## Method
 
 ### GIUNet Structure
 
 ![model_archotecture](./paper_images/Model_Architecture.jpg)
+
+## pqPoolins
 
 ![pqPool](./paper_images/Pooling.jpg)
 
