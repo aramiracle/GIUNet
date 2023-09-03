@@ -23,7 +23,7 @@ Complete novel method is introduced in paper. The model's architecture and pooli
 
 ![model_archotecture](./paper_images/Model_Architecture.jpg)
 
-### pqPoolins
+### pqPool
 
 ![pqPool](./paper_images/Pooling.jpg)
 
