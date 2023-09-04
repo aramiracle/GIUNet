@@ -4,4 +4,3 @@ __pycache__/
 test.py
 .gitignore
 data
-results/
