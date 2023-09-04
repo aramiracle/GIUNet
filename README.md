@@ -68,7 +68,7 @@ Code for visualizing the embeddings learned by the models using t-SNE is availab
 
 ### Model comparison
 
-code for visualizing accuracies of models with confidence intervals.
+Code for visualizing accuracies of models with confidence intervals.
 
 ### Model Saving
 
