@@ -14,7 +14,7 @@ def create_results_directory():
         os.makedirs('results')
 
 def create_embedding_results_directory(model_name):
-    embedding_results_dir = os.path.join('results', 'embedding', model_name)
+    embedding_results_dir = os.path.join('visualization', 'embedding', model_name)
     if not os.path.exists(embedding_results_dir):
         os.makedirs(embedding_results_dir)
     return embedding_results_dir
@@ -105,8 +105,8 @@ def visualize_embeddings_3d(embeddings, labels, dataset_name, model_name, save_d
 
 def main():
     create_results_directory()
-    model_names = ['GIUNetCent', 'GIUNetSpect']
-    dataset_names = ['MUTAG']
+    model_names = ['GINModel', 'GraphUNetTopK', 'SimpleGraphUNet']
+    dataset_names = ['MUTAG', 'ENZYMES', 'PROTEINS']
 
     for model_name in model_names:
         for dataset_name in dataset_names:

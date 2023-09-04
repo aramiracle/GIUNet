@@ -1,8 +1,11 @@
+import os
 import torch
 import networkx as nx
 import numpy as np
 import scipy.linalg
 import multiprocessing
+import scipy.stats as stats
+import pandas as pd
 
 # Convert edge_index to NetworkX graph
 def edge_index_to_nx_graph(edge_index, num_nodes):
@@ -92,3 +95,79 @@ def adjacency_matrix(edge_index, num_nodes=None):
 # Normalize the graph
 def norm_g(g):
     return g / (g.sum(1, keepdim=True) + 1e-8)
+
+def calculate_confidence_interval(data, confidence=0.95):
+    """
+    Calculate the confidence interval of the data.
+    :param data: List of values.
+    :param confidence: Desired confidence level.
+    :return: Tuple of (mean, lower bound, upper bound)
+    """
+    data = np.array(data)
+    mean = np.mean(data)
+    std = np.std(data, ddof=1)  # Use ddof=1 for sample standard deviation
+    n = len(data)
+    z = stats.t.ppf((1 + confidence) / 2, df=n - 1)  # Calculate z-score for given confidence level
+    margin = z * (std / np.sqrt(n))
+    lower_bound = mean - margin
+    upper_bound = mean + margin
+    return mean, lower_bound, upper_bound
+
+def summarize_results(summary_results):
+    """
+    Summarize the results including mean accuracy and confidence interval.
+    :param summary_results: List of result dictionaries.
+    :return: Dictionary containing summary statistics.
+    """
+    summary_stats = {
+        'Model': [],
+        'Dataset': [],
+        'Mean Accuracy': [],
+        'Confidence Interval (95%)': [],
+    }
+
+    for result in summary_results:
+        model_name = result['Model']
+        dataset_name = result['Dataset']
+        accuracies = [run['Accuracy'] for run in result['Runs']]
+
+        mean_accuracy, lower_bound, upper_bound = calculate_confidence_interval(accuracies)
+
+        summary_stats['Model'].append(model_name)
+        summary_stats['Dataset'].append(dataset_name)
+        summary_stats['Mean Accuracy'].append(mean_accuracy)
+        summary_stats['Confidence Interval (95%)'].append([lower_bound, upper_bound])
+
+    return summary_stats
+
+def write_and_save_summary(summary_results):
+    # Summarize the results
+    summary_stats = summarize_results(summary_results)
+
+    # Print summary statistics
+    print("\nSummary Statistics:")
+    for i, model in enumerate(summary_stats['Model']):
+        dataset = summary_stats['Dataset'][i]
+        mean_accuracy = summary_stats['Mean Accuracy'][i]
+        confidence_interval = summary_stats['Confidence Interval (95%)'][i]
+
+        print(f"Model: {model}, Dataset: {dataset}")
+        print(f"Mean Accuracy: {mean_accuracy:.4f}")
+        print(f"Confidence Interval (95%): [{confidence_interval[0]:.4f}, {confidence_interval[1]:.4f}]")
+        print()
+
+    # Create a DataFrame from summary_results
+    df = pd.DataFrame(summary_results)
+
+    # Save the DataFrame as a CSV file in the 'results/' directory
+    results_dir = 'results'
+    csv_filename = os.path.join(results_dir, 'summary_results.csv')
+
+    # Add the confidence interval to the DataFrame
+    df['Lower Bound'] = [interval[0] for interval in summary_stats['Confidence Interval (95%)']]
+    df['Upper Bound'] = [interval[1] for interval in summary_stats['Confidence Interval (95%)']]
+
+    # Reorder the columns
+    df = df[['Model', 'Dataset', 'Mean Accuracy', 'Confidence Interval (95%)', 'Lower Bound', 'Upper Bound']]
+
+    df.to_csv(csv_filename, index=False)

@@ -8,3 +8,4 @@ tqdm==4.66.1
 pandas==2.1.0
 scipy==1.11.2
 multiprocessing==2.6.2.1
+seaborn==0.12.2
