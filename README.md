@@ -76,10 +76,6 @@ Scripts for visualizing training and testing metrics using matplotlib have been 
 
 Code for visualizing the embeddings learned by the models using t-SNE is available. The dimensionality of embeddings is reduced to either 2D or 3D, and they are visualized along with their labels.
 
-### Model comparison
-
-Code for visualizing accuracies of models with confidence intervals.
-
 ### Model Saving
 
 The state_dict of the best-performing model is saved to disk for subsequent use or evaluation.
