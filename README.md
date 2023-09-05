@@ -5,6 +5,16 @@
 This is a contemporary PyTorch implementation for the task of graph classification using graph neural networks (GNN). It is built mainly upon the GIN (Graph Isomorphisms Networks) approach and includes some novel models introduced in the paper titled "Graph Isomorphism UNet," authored by Alireza Amouzad, Zahra Dehghanian, Saeed Saravani, Maryam Amirmazlaghani, and Behnam Roshanfekr, affiliated with Amirkabir University of Technology.
 The link of [paper](https://doi.org/10.1016/j.eswa.2023.121280)
 
+## Results
+
+We get impressive results in some dataset as you can see below:
+
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/graph-isomorphism-unet/graph-classification-on-ptc)](https://paperswithcode.com/sota/graph-classification-on-ptc?p=graph-isomorphism-unet)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/graph-isomorphism-unet/graph-classification-on-mutag)](https://paperswithcode.com/sota/graph-classification-on-mutag?p=graph-isomorphism-unet)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/graph-isomorphism-unet/graph-classification-on-enzymes)](https://paperswithcode.com/sota/graph-classification-on-enzymes?p=graph-isomorphism-unet)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/graph-isomorphism-unet/graph-classification-on-imdb-m)](https://paperswithcode.com/sota/graph-classification-on-imdb-m?p=graph-isomorphism-unet)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/graph-isomorphism-unet/graph-classification-on-imdb-b)](https://paperswithcode.com/sota/graph-classification-on-imdb-b?p=graph-isomorphism-unet)
+
 ## Table of Contents
 
 - [Usage](#usage)
