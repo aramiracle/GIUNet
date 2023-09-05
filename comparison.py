@@ -51,6 +51,6 @@ for i, model in enumerate(models):
     
 # Adjust layout and show the plot
 plt.tight_layout()
-visulization_file_path = os.path.join('visualization', 'comparison_of_rapid_models')
+visulization_file_path = os.path.join('visualization', 'comparison_of_models')
 plt.savefig(visulization_file_path)
 plt.show()
