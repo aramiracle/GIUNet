@@ -86,6 +86,10 @@ The state_dict of the best-performing model is saved to disk for subsequent use 
 
 Overall, this code is regarded as clear and well-documented, following best practices for organizing machine learning experiments.
 
+### Comparison
+
+Finally the model performance results with confidence interval are shown and saved by script comparison.py. 
+
 ## Installing
 
 To run this project, you need to install the Python packages mentioned in `requirements.txt`. To install the dependencies listed in `requirements.txt`, open a command prompt or terminal, navigate to your project directory, and run the following command:
