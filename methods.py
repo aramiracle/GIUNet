@@ -16,13 +16,20 @@ def edge_index_to_nx_graph(edge_index, num_nodes):
     return G
 
 #Calculatiing normalized Laplacian of graph
-def normalized_laplacian(adjacency_matrix: torch.Tensor) -> torch.Tensor:
-    """ Computes the symmetric normalized Laplacian matrix """
+def normalized_laplacian(graph: nx.Graph) -> torch.Tensor:
+    """Computes the symmetric normalized Laplacian matrix."""
+    # Convert to dense matrix and float type and also make sure graph has Laplacian
+    adjacency_matrix = nx.adjacency_matrix(graph).toarray().astype(float) + 1e-9
     num_nodes = adjacency_matrix.shape[0]
-    d = torch.sum(adjacency_matrix, dim=1)
-    Dinv_sqrt = torch.diag(1 / torch.sqrt(d))
-    Ln = torch.eye(num_nodes, device=adjacency_matrix.device) - torch.mm(torch.mm(Dinv_sqrt, adjacency_matrix), Dinv_sqrt)
+
+    # Calculate the degree matrix
+    d = torch.sum(torch.tensor(adjacency_matrix), dim=1)
+    Dinv_sqrt = torch.diag(1 / torch.sqrt(d)) + 1e-9
+
+    # Compute the normalized Laplacian matrix
+    Ln = torch.eye(num_nodes, device=Dinv_sqrt.device, dtype=torch.double) - torch.mm(torch.mm(Dinv_sqrt, torch.tensor(adjacency_matrix, dtype=torch.double)), Dinv_sqrt)
     Ln = 0.5 * (Ln + Ln.T)
+
     return Ln
 
 #Approximataion of eigenvectors of matrix

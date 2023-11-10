@@ -91,10 +91,10 @@ class GIUNetSpect(nn.Module):
         super(GIUNetSpect, self).__init__()
 
         self.conv1 = make_convolution(num_features, 32)
-        self.pool1 = CentPool(32, ratio=0.8, p=0.5)  # Custom pooling layer
+        self.pool1 = SpectPool(32, ratio=0.8, p=0.5)  # Custom pooling layer
 
         self.conv2 = make_convolution(32, 64)
-        self.pool2 = CentPool(64, ratio=0.8, p=0.5)  # Custom pooling layer
+        self.pool2 = SpectPool(64, ratio=0.8, p=0.5)  # Custom pooling layer
 
         self.midconv = make_convolution(64, 64)
 
